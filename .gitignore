@@ -17,6 +17,9 @@ site/
 .DS_Store
 out/
 
-# Synthetic corpora are generated, never committed; the generator lives in scripts/
-data/
+# Synthetic corpora are generated, never committed; the generator lives in scripts/.
+# Ignore the directory's contents (data/*) rather than the directory itself, so the
+# tracked placeholder below survives -- git cannot re-include a file under an
+# excluded directory.
+data/*
 !data/README.md
