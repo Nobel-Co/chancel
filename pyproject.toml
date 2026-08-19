@@ -85,5 +85,13 @@ asyncio_mode = "auto"
 source = ["src/chancel"]
 
 [tool.mutmut]
-paths_to_mutate = ["src/chancel/policy.py"]
-tests_dir = ["tests/"]
+# The gate is the security-critical module; only it is mutated. The whole
+# package is copied into mutmut's sandbox (source_paths) so policy.py's imports
+# resolve, but only_mutate confines mutation to the gate itself. Tests run
+# against test_policy.py, which exercises policy.py to 100% on its own and
+# imports cleanly -- the wider suite's sibling-import fixtures do not resolve
+# inside the sandbox copy, and running them would only slow the gate's proof.
+source_paths = ["src/chancel"]
+only_mutate = ["src/chancel/policy.py"]
+also_copy = ["tests", "scripts", "pyproject.toml"]
+pytest_add_cli_args_test_selection = ["tests/unit/test_policy.py"]

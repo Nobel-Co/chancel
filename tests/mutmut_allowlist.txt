@@ -1,0 +1,11 @@
+# Mutants on src/chancel/policy.py that are permitted to survive mutation
+# testing because they are PROVABLY EQUIVALENT to the original code -- no test
+# can distinguish them. Each is justified in docs/adr/0002-equivalent-mutants-in-policy.md.
+#
+# The CI `mutate` job asserts the set of surviving mutants equals this list
+# EXACTLY: a new survivor fails the build, and so does an entry here that no
+# longer survives (a stale waiver). Adding a line requires an ADR entry.
+#
+# Format: one mutmut mutant id per line; blank lines and #-comments ignored.
+chancel.policy.xǁPolicyGateǁauthorize__mutmut_33
+chancel.policy.xǁPolicyGateǁ_materialize_requested__mutmut_30
