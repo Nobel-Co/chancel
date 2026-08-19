@@ -1,0 +1,52 @@
+site_name: chancel
+site_description: Provable scope isolation for AI retrieval — instructions travel, matter data does not.
+repo_url: https://github.com/Nobel-Co/chancel
+repo_name: Nobel-Co/chancel
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Why: why.md
+  - Architecture: architecture.md
+  - Threat model: threat-model.md
+  - Extending:
+      - Adding a provider: adding-a-provider.md
+      - Adding a store: adding-a-store.md
+  - Decision records:
+      - Name & enforcement boundary: adr/0001-name-and-enforcement-boundary.md
+      - Equivalent mutants in the policy gate: adr/0002-equivalent-mutants-in-policy.md
+      - Collection-per-space vs vendor default: adr/0003-collection-per-space-departs-from-vendor-default.md
+      - Audit hash chain: adr/0004-audit-hash-chain.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
