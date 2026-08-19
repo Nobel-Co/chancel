@@ -1,0 +1,115 @@
+# Release workflow for PyPI Trusted Publishing via OIDC
+# See PRPs/ai_docs/pypi-trusted-publishing.md for configuration details
+# PyPI pending publisher config: owner Nobel-Co, repo chancel, workflow release.yml, environment pypi
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      - name: Verify tag matches pyproject.toml version
+        run: |
+          PROJ_VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          if [ "$PROJ_VERSION" != "$TAG_VERSION" ]; then
+            echo "FAIL: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PROJ_VERSION)"
+            exit 1
+          fi
+          echo "✓ Version match: $PROJ_VERSION"
+      - name: Build distributions
+        run: uv build
+      - name: Verify dist/ contains wheel and sdist
+        run: |
+          if [ ! -f dist/chancel-*.whl ]; then
+            echo "FAIL: No wheel found in dist/"
+            exit 1
+          fi
+          if [ ! -f dist/chancel-*.tar.gz ]; then
+            echo "FAIL: No sdist found in dist/"
+            exit 1
+          fi
+          echo "✓ Built distributions:"
+          ls -lh dist/
+      - name: Generate demo matrix for release notes
+        run: uv run chancel demo --no-llm --format github > demo-matrix.md
+      - name: Upload distributions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+      - name: Upload demo matrix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-matrix
+          path: demo-matrix.md
+          if-no-files-found: error
+
+  pypi-publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/chancel
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI via Trusted Publishing (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+
+  github-release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Download demo matrix
+        uses: actions/download-artifact@v4
+        with:
+          name: demo-matrix
+          path: .
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body_path: demo-matrix.md
+          generate_release_notes: true
