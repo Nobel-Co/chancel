@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+  - repo: local
+    hooks:
+      - id: no-ai-attribution
+        name: forbid AI attribution trailers in commit message
+        language: pygrep
+        entry: '(?i)(co-authored-by:.*claude|generated with.*claude|anthropic\.com/claude)'
+        stages: [commit-msg]
+      - id: cassette-secret-scan
+        name: scan cassettes for key-shaped strings
+        language: pygrep
+        entry: '(sk-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9_.-]{20,})'
+        files: ^tests/cassettes/
+default_install_hook_types: [pre-commit, commit-msg]

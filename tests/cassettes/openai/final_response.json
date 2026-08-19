@@ -1,0 +1,16 @@
+{
+  "id": "chatcmpl-03Final",
+  "object": "chat.completion",
+  "model": "gpt-4o",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "Based on the retrieved passages, the matter concerns contamination damages.",
+        "tool_calls": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-01ToolCalls",
+  "object": "chat.completion",
+  "model": "gpt-4o",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_01Search",
+            "type": "function",
+            "function": {
+              "name": "search_matter_context",
+              "arguments": "{\"query\": \"contamination damages\"}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

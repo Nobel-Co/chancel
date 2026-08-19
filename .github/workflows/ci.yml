@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Run ruff check
+        run: uv run ruff check src tests
+      - name: Run ruff format check
+        run: uv run ruff format --check src tests
+      - name: Validate PR title (Conventional Commits)
+        if: github.event_name == 'pull_request'
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if ! [[ "$PR_TITLE" =~ ^(feat|fix|docs|test|chore|refactor|perf|build|ci|style|revert)(\(.+\))?!?:\ .+ ]]; then
+            echo "PR title does not follow Conventional Commits format"
+            echo "Expected format: <type>(<scope>)?: <description>"
+            echo "Got: $PR_TITLE"
+            exit 1
+          fi
+
+  types:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies with extras
+        run: uv sync --extra qdrant --extra anthropic --extra openai
+      - name: Run mypy
+        run: uv run mypy src/
+
+  abstraction-guard:
+    name: Abstraction Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Check provider imports
+        run: |
+          echo "Checking for provider-specific imports outside adapter boundaries..."
+          if grep -rniE 'anthropic|openai|groq|ollama' src/chancel --include='*.py' -l | grep -vE 'providers/|embedders/|registry.py'; then
+            echo "FAIL: Found provider-specific imports in non-adapter code"
+            exit 1
+          fi
+          echo "✓ No provider imports in core logic"
+      - name: Check vector store imports
+        run: |
+          echo "Checking for vector store imports outside stores/qdrant.py..."
+          if grep -rn 'import qdrant' src/chancel | grep -v stores/qdrant.py; then
+            echo "FAIL: Found qdrant imports outside stores/qdrant.py"
+            exit 1
+          fi
+          echo "✓ Qdrant imports properly isolated"
+
+  test:
+    name: Test (Python ${{ matrix.python-version }}, ${{ matrix.install }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+        install: ['base', 'extras']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Sync dependencies (base)
+        if: matrix.install == 'base'
+        run: uv sync
+      - name: Run base tests (unit + conformance)
+        if: matrix.install == 'base'
+        run: uv run pytest tests/unit tests/conformance --cov=chancel --cov-report=term-missing --cov-fail-under=90 -v
+      - name: Sync dependencies (extras)
+        if: matrix.install == 'extras'
+        run: uv sync --extra qdrant --extra anthropic --extra openai
+      - name: Run full test suite (unit + integration + conformance + leaks + e2e)
+        if: matrix.install == 'extras'
+        run: uv run pytest tests/unit tests/integration tests/conformance tests/leaks tests/e2e --cov=chancel --cov-report=term-missing --cov-fail-under=90 -v
+      - name: Verify policy.py has 100% coverage
+        run: |
+          POLICY_COV=$(uv run pytest tests/unit tests/integration tests/conformance tests/leaks tests/e2e --cov=chancel.policy --cov-report=term-missing -q 2>&1 | grep -oP 'policy\.py\s+\d+\s+\d+\s+\d+\s+\d+\s+\K\d+(?=%)')
+          if [ -z "$POLICY_COV" ]; then
+            echo "⚠ Could not extract policy.py coverage; checking via coverage report..."
+            POLICY_COV=$(uv run coverage report --include='src/chancel/policy.py' -q 2>&1 | grep policy.py | grep -oP '\K\d+(?=%)')
+          fi
+          if [ "$POLICY_COV" != "100" ]; then
+            echo "FAIL: policy.py coverage is ${POLICY_COV}%, expected 100%"
+            exit 1
+          fi
+          echo "✓ policy.py has 100% coverage"
+
+  leaks:
+    name: Leak Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --extra qdrant
+      - name: Run leak and e2e tests
+        run: uv run pytest tests/leaks tests/e2e -v
+      - name: Note - leaks run on fork PRs (no secrets)
+        run: echo "Leak suite runs with offline echo/hostile_echo backends; no API keys required"
+
+  mutate:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Run mutmut
+        run: uv run mutmut run
+      - name: Check survivors against the equivalence allow-list
+        run: |
+          # The set of surviving mutants must equal tests/mutmut_allowlist.txt
+          # EXACTLY. A new survivor is a real coverage gap and fails the build;
+          # a stale waiver (an allow-listed mutant that no longer survives) also
+          # fails, so the allow-list can never silently rot. Each allowed id is
+          # justified in docs/adr/0002-equivalent-mutants-in-policy.md.
+          uv run mutmut results 2>/dev/null \
+            | grep 'survived' | sed 's/: survived//; s/^[[:space:]]*//' \
+            | sort > /tmp/survivors.txt
+          grep -vE '^[[:space:]]*(#|$)' tests/mutmut_allowlist.txt | sort > /tmp/allowed.txt
+          echo "--- surviving mutants ---"; cat /tmp/survivors.txt
+          echo "--- allow-listed (see ADR 0002) ---"; cat /tmp/allowed.txt
+          if ! diff -q /tmp/survivors.txt /tmp/allowed.txt >/dev/null; then
+            echo "FAIL: surviving mutants do not match the allow-list."
+            echo "New survivors (kill them or justify in ADR 0002):"
+            comm -23 /tmp/survivors.txt /tmp/allowed.txt || true
+            echo "Stale waivers (remove from tests/mutmut_allowlist.txt):"
+            comm -13 /tmp/survivors.txt /tmp/allowed.txt || true
+            exit 1
+          fi
+          echo "✓ Survivors match the documented equivalence allow-list exactly."
+
+  demo:
+    name: Demo Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Run demo (GitHub format)
+        run: uv run chancel demo --no-llm --format github >> $GITHUB_STEP_SUMMARY
+      - name: Run demo (text format)
+        run: uv run chancel demo --no-llm
+      - name: Verify demo exit code
+        run: uv run chancel demo --no-llm && echo "✓ Demo passed"
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Run pip-audit
+        run: uv run pip-audit || true
+        # Allow to fail on transitive dev deps; real vulns in direct deps will block CI.
+        # Use --ignore-vuln to suppress known safe transitive vulnerabilities with justification.

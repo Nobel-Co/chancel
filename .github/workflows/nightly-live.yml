@@ -1,0 +1,55 @@
+name: Nightly Live Provider Testing
+
+on:
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  test-live:
+    name: Test Against Live Providers
+    # Only run on the main repo, not on forks
+    if: github.repository == 'Nobel-Co/chancel'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies with provider extras
+        run: uv sync --extra anthropic --extra openai
+      - name: Run demo against live providers (isolated backend)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run chancel demo --provider anthropic --provider openai_compat --backend isolated
+      - name: Run demo against live providers (filtered backend)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run chancel demo --provider anthropic --provider openai_compat --backend filtered
+      - name: Run demo against live providers (shared backend)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run chancel demo --provider anthropic --provider openai_compat --backend shared
+      - name: Report failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = new Date().toISOString().split('T')[0];
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `nightly-live failed on ${now}`,
+              body: `The nightly live provider testing workflow failed. Check the run: ${context.server_url}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ['bug', 'ci']
+            });
+      - name: Note - catches provider API changes
+        run: echo "This job catches breaking changes in provider tool-call shapes and API contracts"

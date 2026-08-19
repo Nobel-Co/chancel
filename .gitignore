@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+mutants/
+.mutmut-cache
+site/
+.env
+.DS_Store
+out/
+
+# Synthetic corpora are generated, never committed; the generator lives in scripts/.
+# Ignore the directory's contents (data/*) rather than the directory itself, so the
+# tracked placeholder below survives -- git cannot re-include a file under an
+# excluded directory.
+data/*
+!data/README.md
