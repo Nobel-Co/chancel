@@ -1,0 +1,17 @@
+{
+  "id": "msg_01ToolUse",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_01Search",
+      "name": "search_matter_context",
+      "input": {"query": "contamination damages"}
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {"input_tokens": 42, "output_tokens": 18}
+}

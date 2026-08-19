@@ -71,6 +71,12 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 strict = true
 python_version = "3.12"
 
+[[tool.mypy.overrides]]
+# Optional dependency, not part of this environment's validation install
+# (it downloads model weights on first use -- see fastembed_local.py).
+module = "fastembed"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
