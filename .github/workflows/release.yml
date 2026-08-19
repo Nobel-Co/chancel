@@ -56,13 +56,13 @@ jobs:
       - name: Generate demo matrix for release notes
         run: uv run chancel demo --no-llm --format github > demo-matrix.md
       - name: Upload distributions artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
           if-no-files-found: error
       - name: Upload demo matrix artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: demo-matrix
           path: demo-matrix.md
