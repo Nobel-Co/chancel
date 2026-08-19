@@ -49,3 +49,18 @@
 **Decision:** Haiku for mechanical phases, Sonnet for design-critical ones; escalations logged here.
 
 **Consequence:** This file becomes the record of which decisions were escalated and why.
+
+## 2026-08-19 — PolicyGate review finding (pre-merge)
+
+**Context.** First implementation of `PolicyGate.authorize()` bounded the resolver's
+allowlist by the gate's universe (firm + every known space). A hostile or buggy resolver
+returning another known space's collection was inside that bound, so a request naming the
+other space's collection would have been granted — a cross-space read through the wall.
+Caught in orchestrator review of the implementing agent's own deviation notes, before merge.
+
+**Decision.** The resolver bound is `scope.allowed_collections`, not the gate's universe. A
+resolver can only narrow the scope's structural authority; widening is unrepresentable
+regardless of what it returns. Regression test: `test_resolver_cannot_widen_to_another_known_space`.
+
+**Consequence.** The gate's authority derives from the ActiveScope alone. No escalation of
+agent tier was needed — the finding was a spec defect, not an implementation failure.
