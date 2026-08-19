@@ -20,6 +20,30 @@ def _line_hash(line_bytes: bytes) -> str:
     return hashlib.sha256(line_bytes).hexdigest()
 
 
+def _last_line(content: bytes) -> bytes:
+    """The final newline-delimited line of ``content``, without its trailing
+    LF. A single trailing newline is expected (the log ends every line with
+    one); empty content yields ``b""``."""
+    lines = content.split(b"\n")
+    if lines and lines[-1] == b"":
+        lines = lines[:-1]
+    return lines[-1] if lines else b""
+
+
+def head_line_hash(path: Path) -> str | None:
+    """SHA-256 of the log's last non-empty line, or ``None`` for a missing or
+    empty log.
+
+    This is the anchor a user records out of band: the hash chain binds every
+    line to its predecessor but nothing points at the final line, so a mutated
+    last line is only detectable by comparing against a value recorded earlier.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    last = _last_line(path.read_bytes())
+    return _line_hash(last) if last else None
+
+
 class AuditLog:
     """Append-only JSONL log of retrieval receipts with SHA-256 hash chain."""
 
@@ -34,23 +58,11 @@ class AuditLog:
         Reads the last line of the file if it exists to compute the previous hash.
         Returns a copy of the receipt with prev_sha256 set to the computed hash.
         """
-        # Determine prev_sha256 by reading the last line from the file
-        if self.path.exists() and self.path.stat().st_size > 0:
-            # Read all lines and get the last one (without trailing newline)
-            with open(self.path, "rb") as f:
-                content = f.read()
-            # Split on LF and get the last non-empty line
-            lines = content.split(b"\n")
-            # The last element might be empty if file ends with newline
-            last_line = lines[-2] if lines[-1] == b"" else lines[-1]
-            prev_sha256 = _line_hash(last_line) if last_line else "0" * 64
-        else:
-            prev_sha256 = "0" * 64
-
-        # Create receipt copy with prev_sha256 set
+        # A first line anchors the chain at all-zeroes; every later line is
+        # bound to the hash of the one before it.
+        prev_sha256 = head_line_hash(self.path) or "0" * 64
         stored_receipt = receipt.model_copy(update={"prev_sha256": prev_sha256})
 
-        # Append to file
         line_bytes = stored_receipt.canonical_json().encode("utf-8")
         with open(self.path, "ab") as f:
             f.write(line_bytes)

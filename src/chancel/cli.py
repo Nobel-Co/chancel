@@ -19,7 +19,6 @@ it.
 # ruff: noqa: B008 -- typer.Option/Argument in defaults is the framework's API.
 from __future__ import annotations
 
-import hashlib
 import importlib
 import importlib.util
 import json
@@ -31,7 +30,7 @@ from typing import cast
 import typer
 
 from chancel.agent import ScopedAgent
-from chancel.audit import AuditLog, verify_log
+from chancel.audit import AuditLog, head_line_hash, verify_log
 from chancel.ingest import ingest_corpus
 from chancel.model import ActiveScope, RetrievalReceipt
 from chancel.policy import PolicyGate
@@ -151,19 +150,6 @@ def _build_pipeline(
 
     retriever = Retriever(gate, mode, embedder, audit=record)
     return _Pipeline(retriever, corpus, receipts, log)
-
-
-def _head_hash(path: Path) -> str | None:
-    """SHA-256 of the log's last line -- the anchor value a user records
-    externally to detect a mutated final line, which the chain cannot."""
-    if not path.exists() or path.stat().st_size == 0:
-        return None
-    content = path.read_bytes()
-    lines = content.split(b"\n")
-    last = lines[-2] if lines and lines[-1] == b"" else lines[-1]
-    if not last:
-        return None
-    return hashlib.sha256(last).hexdigest()
 
 
 # -- demo -----------------------------------------------------------------
@@ -357,7 +343,7 @@ def attack(
 
     result = verify_log(log)
     if result.ok:
-        head = _head_hash(log)
+        head = head_line_hash(log)
         typer.echo(f"audit log OK: {result.lines} lines verified")
         if head:
             typer.echo(f"head line_hash: {head}")
@@ -384,7 +370,7 @@ def verify_log_command(
     result = verify_log(path)
     if result.ok:
         typer.echo(f"OK: {result.lines} lines verified")
-        head = _head_hash(path)
+        head = head_line_hash(path)
         if head:
             typer.echo(f"head line_hash: {head}")
         return
