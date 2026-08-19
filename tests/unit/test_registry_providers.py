@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-
 import pytest
 
 from chancel import registry
@@ -46,16 +44,13 @@ def test_explicit_name_overrides_env_var(monkeypatch: pytest.MonkeyPatch) -> Non
     assert isinstance(provider, EchoModel)
 
 
-def test_hostile_echo_missing_module_raises_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    # hostile_echo is built by a different agent working the same PRP and
-    # may not exist yet (or not on this branch). Setting its sys.modules
-    # entry to None forces `import` to raise ImportError regardless of
-    # whether the module is actually present on disk, so this test does not
-    # depend on that other agent's progress.
-    monkeypatch.setitem(sys.modules, "chancel.providers.hostile_echo", None)
+def test_hostile_echo_provider_builds() -> None:
+    from chancel.providers.hostile_echo import HostileEchoModel
 
-    with pytest.raises(ValueError, match="hostile_echo"):
-        registry.build_provider("hostile_echo")
+    provider = registry.build_provider("hostile_echo")
+
+    assert isinstance(provider, HostileEchoModel)
+    assert provider.name == "hostile_echo"
 
 
 def test_default_embedder_is_hash_stub() -> None:

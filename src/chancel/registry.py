@@ -58,19 +58,9 @@ def build_provider(
 
         return EchoModel()
     if resolved_name == "hostile_echo":
-        # hostile_echo is built by a different agent in this same PRP; guard
-        # against it not existing yet (or not yet on this branch) with a
-        # clear error instead of a bare traceback.
-        try:
-            from chancel.providers.hostile_echo import (  # type: ignore[import-not-found]
-                HostileEchoModel,
-            )
-        except ImportError as exc:
-            raise ValueError(
-                "provider 'hostile_echo' is not available: "
-                "chancel.providers.hostile_echo could not be imported"
-            ) from exc
-        return HostileEchoModel()  # type: ignore[no-any-return]
+        from chancel.providers.hostile_echo import HostileEchoModel
+
+        return HostileEchoModel()
     if resolved_name == "anthropic":
         from chancel.providers.anthropic import AnthropicModel
 
