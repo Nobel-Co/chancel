@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chancel"
+version = "0.1.0"
+description = "Provable scope isolation for AI retrieval - firm instructions travel, matter data never crosses the wall, enforced below the model boundary."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "Barret J. Nobel", email = "contact@barretnobel.com" }]
+keywords = ["rag", "retrieval", "isolation", "multitenancy", "ethical-wall", "security"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+]
+dependencies = [
+  "pydantic==2.13.4",
+  "typer==0.27.1",
+  "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+qdrant = ["qdrant-client==1.19.0"]
+local = ["fastembed==0.8.0"]
+anthropic = ["anthropic==0.124.0"]
+openai = ["openai==3.3.1"]
+all = ["chancel[qdrant,local,anthropic,openai]"]
+
+[project.scripts]
+chancel = "chancel.cli:app"
+chl = "chancel.cli:app"
+
+[project.urls]
+Repository = "https://github.com/Nobel-Co/chancel"
+Documentation = "https://nobel-co.github.io/chancel/"
+
+[dependency-groups]
+dev = [
+  "pytest==9.1.1",
+  "pytest-cov==7.1.0",
+  "pytest-asyncio==1.4.0",
+  "hypothesis==6.165.10",
+  "mutmut==3.7.0",
+  "ruff==0.16.3",
+  "mypy==2.3.1",
+  "pip-audit==2.10.1",
+]
+docs = [
+  "mkdocs-material==9.7.7",
+  "mkdocstrings[python]==1.0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chancel"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/chancel"]
+
+[tool.mutmut]
+paths_to_mutate = ["src/chancel/policy.py"]
+tests_dir = ["tests/"]

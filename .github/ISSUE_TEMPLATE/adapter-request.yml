@@ -1,0 +1,32 @@
+name: Adapter request
+description: Request support for a new provider or vector store
+title: "[Adapter] "
+labels: ["adapter-request"]
+body:
+  - type: input
+    id: provider_name
+    attributes:
+      label: Provider or store name
+      description: "e.g., Groq, Together, Milvus, Pinecone"
+      placeholder: "Groq"
+    validations:
+      required: true
+  - type: input
+    id: docs_url
+    attributes:
+      label: Docs URL
+      description: Link to official documentation or API reference
+      placeholder: "https://..."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: Why would this adapter be valuable for chancel users?
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        **Note:** New adapters must pass `tests/conformance/` unmodified. Check the conformance suite before opening a request.

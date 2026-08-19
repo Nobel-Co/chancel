@@ -1,0 +1,3 @@
+# These two paths are load-bearing: the security gate and the proof it works.
+/src/chancel/policy.py @frankTurtle
+/tests/leaks/ @frankTurtle

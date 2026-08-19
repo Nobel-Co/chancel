@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a bug in chancel
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: Describe the unexpected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What should have happened instead
+    validations:
+      required: true
+  - type: input
+    id: backend_mode
+    attributes:
+      label: Backend mode
+      description: "isolated, filtered, or shared"
+      placeholder: "isolated"
+  - type: input
+    id: provider_adapter
+    attributes:
+      label: Provider adapter
+      description: "e.g., anthropic, openai_compat, echo"
+      placeholder: "echo"
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I confirm no real client data appears in this report
+          required: true
