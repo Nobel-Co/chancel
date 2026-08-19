@@ -93,27 +93,25 @@ jobs:
       - name: Sync dependencies (base)
         if: matrix.install == 'base'
         run: uv sync
-      - name: Run base tests (unit + conformance)
+      - name: Run offline tiers (base install, no extras)
         if: matrix.install == 'base'
-        run: uv run pytest tests/unit tests/conformance --cov=chancel --cov-report=term-missing --cov-fail-under=90 -v
+        # No coverage gate here: with no optional adapters installed, the
+        # provider/qdrant/fastembed code paths are unexercised by design, so a
+        # whole-package threshold cannot be met. This tier only proves the
+        # offline suite is green from a bare install. The 90% gate lives on the
+        # extras tier below, which does exercise every path.
+        run: uv run pytest tests/unit tests/conformance -q
       - name: Sync dependencies (extras)
         if: matrix.install == 'extras'
         run: uv sync --extra qdrant --extra anthropic --extra openai
-      - name: Run full test suite (unit + integration + conformance + leaks + e2e)
+      - name: Run full test suite with coverage gate
         if: matrix.install == 'extras'
-        run: uv run pytest tests/unit tests/integration tests/conformance tests/leaks tests/e2e --cov=chancel --cov-report=term-missing --cov-fail-under=90 -v
+        run: uv run pytest tests/unit tests/integration tests/conformance tests/leaks tests/e2e --cov=chancel --cov-report=term-missing --cov-fail-under=90
       - name: Verify policy.py has 100% coverage
-        run: |
-          POLICY_COV=$(uv run pytest tests/unit tests/integration tests/conformance tests/leaks tests/e2e --cov=chancel.policy --cov-report=term-missing -q 2>&1 | grep -oP 'policy\.py\s+\d+\s+\d+\s+\d+\s+\d+\s+\K\d+(?=%)')
-          if [ -z "$POLICY_COV" ]; then
-            echo "⚠ Could not extract policy.py coverage; checking via coverage report..."
-            POLICY_COV=$(uv run coverage report --include='src/chancel/policy.py' -q 2>&1 | grep policy.py | grep -oP '\K\d+(?=%)')
-          fi
-          if [ "$POLICY_COV" != "100" ]; then
-            echo "FAIL: policy.py coverage is ${POLICY_COV}%, expected 100%"
-            exit 1
-          fi
-          echo "✓ policy.py has 100% coverage"
+        if: matrix.install == 'extras'
+        # --cov-fail-under against the single module fails the step if the gate
+        # is ever below 100%, with no output parsing to drift.
+        run: uv run pytest tests/unit tests/integration tests/conformance tests/leaks tests/e2e --cov=chancel.policy --cov-fail-under=100 -q
 
   leaks:
     name: Leak Suite
