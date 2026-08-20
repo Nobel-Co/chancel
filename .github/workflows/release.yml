@@ -19,7 +19,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -56,13 +56,13 @@ jobs:
       - name: Generate demo matrix for release notes
         run: uv run chancel demo --no-llm --format github > demo-matrix.md
       - name: Upload distributions artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
           if-no-files-found: error
       - name: Upload demo matrix artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: demo-matrix
           path: demo-matrix.md
@@ -79,7 +79,7 @@ jobs:
       id-token: write
     steps:
       - name: Download distributions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
@@ -96,19 +96,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download distributions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
       - name: Download demo matrix
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: demo-matrix
           path: .
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           body_path: demo-matrix.md
