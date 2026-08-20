@@ -79,7 +79,7 @@ jobs:
       id-token: write
     steps:
       - name: Download distributions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
@@ -98,12 +98,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download distributions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
       - name: Download demo matrix
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: demo-matrix
           path: .
