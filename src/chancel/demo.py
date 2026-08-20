@@ -19,15 +19,14 @@ table the README shows.
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 from pydantic import BaseModel
 
 from chancel.agent import ScopedAgent
+from chancel.corpus import generate
 from chancel.embedders.hash_stub import HashStubEmbedder
 from chancel.exceptions import ScopeViolation
 from chancel.ingest import ingest_corpus
@@ -88,30 +87,14 @@ class MatrixReport(BaseModel, frozen=True):
 
 
 # --------------------------------------------------------------------------
-# corpus loading -- scripts/ is a standalone CLI dir, not a package, so it is
-# located relative to this file (repo root = parents[2]) and its generator
-# imported by path. tests/conftest already puts scripts/ on sys.path, so this
-# also just works under pytest.
+# corpus loading -- the generator is a module of this package (``chancel.corpus``),
+# so it ships in the wheel and resolves identically from a source checkout and
+# from site-packages.
 # --------------------------------------------------------------------------
-
-
-_GenerateFn = Callable[[int], dict[str, list[dict[str, str | None]]]]
-
-
-def _load_generate() -> _GenerateFn:
-    try:
-        from generate_corpus import generate
-    except ImportError:
-        scripts = Path(__file__).resolve().parents[2] / "scripts"
-        if str(scripts) not in sys.path:
-            sys.path.insert(0, str(scripts))
-        from generate_corpus import generate  # type: ignore[import-not-found]
-    return cast("_GenerateFn", generate)
 
 
 def load_corpus(seed: int = 1789) -> dict[str, list[dict[str, str | None]]]:
     """The generated synthetic corpus, as ``ingest_corpus`` expects it."""
-    generate = _load_generate()
     return generate(seed)
 
 
