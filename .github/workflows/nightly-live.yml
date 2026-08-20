@@ -40,7 +40,7 @@ jobs:
         run: uv run chancel demo --provider anthropic --provider openai_compat --backend shared
       - name: Report failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const now = new Date().toISOString().split('T')[0];
