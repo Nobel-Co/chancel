@@ -1,9 +1,12 @@
 name: Nightly Live Provider Testing
 
 on:
-  schedule:
-    # Run nightly at 2 AM UTC
-    - cron: '0 2 * * *'
+  # Nightly schedule disabled: no ANTHROPIC_API_KEY/OPENAI_API_KEY secrets are
+  # configured in this repo, so every scheduled run just fails immediately
+  # and files a CI issue. Re-enable the schedule below once those secrets
+  # are added, or trigger manually via workflow_dispatch.
+  # schedule:
+  #   - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:
