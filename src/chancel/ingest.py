@@ -1,6 +1,6 @@
 """One ingestion path for every ``StorageMode`` -- apples-to-apples comparison.
 
-Takes the dict shape produced by ``scripts/generate_corpus.py``'s
+Takes the dict shape produced by ``chancel.corpus``'s
 ``generate()``: ``{"firm": [...], "matter-<id>": [...], ...}``, each doc a
 dict with ``local_id``, ``scope``, ``space_id``, ``title``, ``text``.
 """
