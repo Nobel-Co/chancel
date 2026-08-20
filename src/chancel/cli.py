@@ -20,17 +20,15 @@ it.
 from __future__ import annotations
 
 import importlib
-import importlib.util
 import json
 import os
 from pathlib import Path
-from types import ModuleType
-from typing import cast
 
 import typer
 
 from chancel.agent import ScopedAgent
 from chancel.audit import AuditLog, head_line_hash, verify_log
+from chancel.corpus import generate, write_corpus
 from chancel.ingest import ingest_corpus
 from chancel.model import ActiveScope, RetrievalReceipt
 from chancel.policy import PolicyGate
@@ -53,63 +51,14 @@ _OFFLINE_PROVIDERS = ("echo", "hostile_echo")
 # -- shared helpers -------------------------------------------------------
 
 
-def _repo_root() -> Path:
-    """The repository root: two levels up from ``src/chancel/cli.py``."""
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_generate_module() -> ModuleType:
-    """Import ``scripts/generate_corpus.py`` by file path.
-
-    The generator is a standalone script directory, not a package, so it is
-    loaded by location rather than by import name. Raises a clear CLI error
-    if the script is absent (e.g. installed as a wheel, which omits scripts).
-    """
-    gen_path = _repo_root() / "scripts" / "generate_corpus.py"
-    if not gen_path.exists():
-        raise typer.BadParameter(
-            f"corpus generator not found at {gen_path}; "
-            "run from a source checkout or `python scripts/generate_corpus.py` first"
-        )
-    spec = importlib.util.spec_from_file_location("generate_corpus", gen_path)
-    if spec is None or spec.loader is None:  # pragma: no cover - defensive
-        raise typer.BadParameter(f"could not load corpus generator at {gen_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def _load_corpus(seed: int) -> Corpus:
-    """Load the synthetic corpus, preferring the generator over on-disk files.
+    """The synthetic corpus at ``seed``, generated in-process.
 
-    Order: (1) call ``scripts/generate_corpus.generate(seed)`` if the script
-    is present -- this honors ``--seed``; (2) fall back to reading
-    ``data/corpus/*.jsonl`` if those exist (default-seed fixture); (3) error
-    clearly telling the user how to produce the corpus.
+    The generator is a module of this package, so it is always available --
+    from a source checkout and from an installed wheel alike -- and ``--seed``
+    is always honored.
     """
-    gen_path = _repo_root() / "scripts" / "generate_corpus.py"
-    if gen_path.exists():
-        module = _load_generate_module()
-        return cast(Corpus, module.generate(seed))
-
-    corpus_dir = _repo_root() / "data" / "corpus"
-    jsonl_files = sorted(corpus_dir.glob("*.jsonl")) if corpus_dir.exists() else []
-    if jsonl_files:
-        corpus: Corpus = {}
-        for path in jsonl_files:
-            key = path.stem
-            docs: list[CorpusDoc] = []
-            for line in path.read_text().splitlines():
-                if line.strip():
-                    docs.append(cast(CorpusDoc, json.loads(line)))
-            corpus[key] = docs
-        return corpus
-
-    raise typer.BadParameter(
-        "no corpus available: the generator script is missing and no "
-        "data/corpus/*.jsonl files were found. Run `python scripts/generate_corpus.py` "
-        "or `chancel gen-corpus` first."
-    )
+    return generate(seed)
 
 
 class _Pipeline:
@@ -389,11 +338,10 @@ def gen_corpus(
 ) -> None:
     """Regenerate the synthetic corpus on disk and print its summary.
 
-    Thin wrapper over ``scripts/generate_corpus.write_corpus`` so the corpus
-    can be produced after install without invoking the script by path.
+    Thin wrapper over ``chancel.corpus.write_corpus`` so the corpus can be
+    produced after install without a source checkout.
     """
-    module = _load_generate_module()
-    manifest = module.write_corpus(out, seed)
+    manifest = write_corpus(out, seed)
 
     counts = manifest["doc_counts"]
     total = sum(counts.values())
